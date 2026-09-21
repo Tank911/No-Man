@@ -1,0 +1,1395 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Maze Generator - Incompetech</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%23fff'/%3E%3Cpath d='M4 4h24v24H4z M4 10h18 M28 16h-18 M4 22h18 M10 4v12 M22 10v12 M16 16v12' fill='none' stroke='%233a5fcd' stroke-width='2'/%3E%3C/svg%3E">
+<style>
+  :root {
+    --ink: #222;
+    --muted: #777;
+    --line: #ddd;
+    --accent: #3a5fcd;
+    --bg: #fafafa;
+    --panel: #ffffff;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    color: var(--ink);
+    background: var(--bg);
+  }
+  .wrap { max-width: 1060px; margin: 0 auto; padding: 20px 16px 60px; }
+  h1 { font-size: 1.5rem; margin: 0 0 9px; }
+  .tagline { color: var(--muted); font-size: 0.9rem; margin: 0 0 20px; }
+  .layout {
+    display: grid;
+    grid-template-columns: minmax(320px, 1fr) minmax(260px, 380px);
+    gap: 28px;
+    align-items: start;
+  }
+  @media (max-width: 720px) {
+    .layout { grid-template-columns: 1fr; }
+    .previewcol { order: -1; }
+  }
+  fieldset {
+    border: 1px solid var(--line); border-radius: 8px;
+    background: var(--panel); margin: 0 0 16px; padding: 12px 14px;
+  }
+  legend {
+    font-size: 0.8rem; font-weight: 600; text-transform: uppercase;
+    letter-spacing: 0.05em; color: var(--muted); padding: 0 6px;
+  }
+  .row {
+    display: grid; grid-template-columns: 130px 1fr;
+    gap: 10px; align-items: center; margin: 8px 0;
+  }
+  .row label { font-size: 0.9rem; }
+  .ctl { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  input[type="text"], input[type="number"] {
+    width: 70px; padding: 4px 6px;
+    border: 1px solid var(--line); border-radius: 4px; font: inherit;
+    background: var(--panel); color: var(--ink);
+  }
+  select {
+    padding: 4px 6px; border: 1px solid var(--line); border-radius: 4px;
+    font: inherit; background: var(--panel); color: var(--ink);
+  }
+  .unit { color: var(--muted); font-size: 0.85rem; }
+  input[type="color"] {
+    width: 44px; height: 30px; padding: 0;
+    border: 1px solid var(--line); border-radius: 4px;
+    background: none; cursor: pointer;
+  }
+  .presets { display: flex; gap: 4px; }
+  .presets button {
+    width: 22px; height: 22px;
+    border: 1px solid rgba(0,0,0,0.25); border-radius: 4px;
+    cursor: pointer; padding: 0;
+  }
+  .stepper {
+    width: 30px; height: 30px;
+    border: 1px solid var(--line); border-radius: 5px;
+    background: var(--panel); font: inherit; cursor: pointer;
+  }
+  .sizebtns { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 8px; }
+  .sizebtns button {
+    padding: 5px 10px; border: 1px solid var(--line); border-radius: 5px;
+    background: var(--panel); font: inherit; font-size: 0.85rem; cursor: pointer;
+  }
+  .sizebtns button.active { border-color: var(--accent); color: var(--accent); font-weight: 600; }
+  .actions { display: flex; gap: 10px; margin-top: 4px; }
+  .actions button {
+    padding: 10px 18px; font: inherit; font-weight: 600;
+    border-radius: 6px; cursor: pointer; border: 1px solid var(--accent);
+  }
+  #download { background: var(--accent); color: #fff; box-shadow: 2px 4px 8px rgba(0,0,0,0.15); }
+  #copylink { background: var(--panel); color: var(--accent); }
+  .alsorow { margin-top: 8px; font-size: 0.8rem; color: var(--muted); }
+  .alsorow a { color: var(--accent); text-decoration: none; }
+  .alsorow a:hover { text-decoration: underline; }
+  .printhint { margin-top: 6px; font-size: 0.75rem; color: var(--muted); }
+  .previewcol { position: sticky; top: 16px; }
+  #preview {
+    width: 100%;
+    border: 1px solid var(--line); border-radius: 4px;
+    background: #fff;
+    box-shadow: 2px 4px 12px rgba(0,0,0,0.08);
+    display: block;
+  }
+  #pageinfo { text-align: center; color: var(--muted); font-size: 0.85rem; margin-top: 8px; }
+  .keepblock {
+    margin-top: 48px; padding: 22px;
+    border: 1px solid var(--line); border-radius: 8px;
+    background: var(--panel); text-align: center;
+  }
+  .keepblock h3 { margin: 0 0 8px; }
+  .keepblock p { max-width: 560px; margin: 0 auto 14px; color: var(--muted); font-size: 0.9rem; }
+  .keep {
+    padding: 10px 18px;
+    border: 1px solid var(--accent); border-radius: 6px;
+    background: var(--accent); color: #fff;
+    font: inherit; font-size: 0.95rem; font-weight: 600;
+    cursor: pointer; box-shadow: 2px 4px 8px rgba(0,0,0,0.15);
+  }
+  footer { margin-top: 40px; color: var(--muted); font-size: 0.8rem; text-align: center; }
+  footer a { color: var(--accent); }
+  .license { font-size: 0.75rem; max-width: 640px; margin: 12px auto 0; }
+  .version { font-size: 0.75rem; margin-top: 8px; }
+  .nojs {
+    padding: 28px; text-align: center; color: var(--muted);
+    border: 1px dashed var(--line); border-radius: 8px;
+    max-width: 560px; margin: 20px auto;
+  }
+  .chk { font-size: 0.9rem; }
+  .howto {
+    max-width: 760px; margin: 32px auto 0; padding: 0 8px;
+    color: var(--ink); font-size: 0.85rem; line-height: 1.5;
+  }
+  .howto h3 { font-size: 1rem; margin: 0 0 10px; text-align: center; }
+  .howto h4 {
+    font-size: 0.7rem; font-weight: 600; text-transform: uppercase;
+    letter-spacing: 0.05em; color: var(--muted);
+    margin: 16px 0 6px;
+  }
+  .howto p { margin: 4px 0; color: #444; }
+  .howto strong { color: var(--ink); }
+  .geombtns { display: flex; gap: 6px; flex-wrap: wrap; }
+  .geombtns button {
+    width: 34px; height: 34px; padding: 5px;
+    border: 1px solid var(--line); border-radius: 5px;
+    background: var(--panel); color: var(--muted); cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    font: inherit; font-size: 0.85rem; font-weight: 600;
+  }
+  .geombtns button svg { display: block; width: 100%; height: 100%; }
+  .geombtns button:hover { border-color: #bbb; color: var(--ink); }
+  .geombtns button.active { border-color: var(--accent); color: var(--accent); background: #f4f7ff; }
+  .sizebtns button:disabled { opacity: 0.35; cursor: default; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Incompetech Maze Generator</h1>
+  <!-- <p class="tagline">Locally processed.</p> -->
+
+  <div class="nojs" id="nojs">
+    <p><strong>Oh, Poop!</strong></p>
+    <p>You're probably looking at a preview of this file. This app can't run here.
+    You need to figure out how to load this into a web browser.
+    If you have the internet
+    - <a href="https://incompetech.com/gallimaufry/incompetech-maze.html">You can use this copy</a>.</p>
+  </div>
+
+  <div class="layout" id="app" style="display:none">
+    <div>
+      <form onsubmit="return false;">
+        <fieldset><legend>Maze</legend>
+          <div class="row"><label>Grid</label>
+            <div class="ctl">
+              <div class="geombtns" id="geombtns">
+                <button type="button" data-geom="square" title="Square">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                    <rect x="3" y="3" width="18" height="18"/>
+                    <path d="M3 9h18M3 15h18M9 3v18M15 3v18"/>
+                  </svg>
+                </button>
+                <button type="button" data-geom="hex" title="Hexagon">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round">
+                    <path d="M7.5 3.5 H16.5 L21 12 L16.5 20.5 H7.5 L3 12 Z"/>
+                  </svg>
+                </button>
+                <button type="button" data-geom="tri" title="Triangle">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round">
+                    <path d="M4 20 L12 5 L20 20 Z"/>
+                    <path d="M8 12.5 L16 12.5 M8 12.5 L12 20 L16 12.5"/>
+                  </svg>
+                </button>
+                <button type="button" data-geom="theta" title="Circle">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                    <circle cx="12" cy="12" r="9.2"/>
+                    <circle cx="12" cy="12" r="5.6"/>
+                    <circle cx="12" cy="12" r="2"/>
+                  </svg>
+                </button>
+              </div>
+            </div>
+          </div>
+          <div class="row"><label>Difficulty</label>
+            <div class="ctl">
+              <div class="geombtns" id="algobtns">
+                <button type="button" data-algo="prim" title="Easiest - wrong turns fizzle out fast">1</button>
+                <button type="button" data-algo="kruskal" title="Easy-ish - even, well-mixed passages">2</button>
+                <button type="button" data-algo="wilson" title="Medium - pure unbiased randomness">3</button>
+                <button type="button" data-algo="backtracker" title="Hardest - long twisty corridors, deep wrong turns">4</button>
+              </div>
+            </div>
+          </div>
+          <div class="row"><label>Look</label>
+            <div class="ctl">
+              <div class="sizebtns" style="margin:0" id="lookbtns">
+                <button type="button" data-look="thin">Thin</button>
+                <button type="button" data-look="hand">Squiggly</button>
+                <button type="button" data-look="shadow">Shadow</button>
+                 <button type="button" data-look="round">Rounded</button>
+                <button type="button" data-look="raised">Raised</button>
+                <button type="button" data-look="thick">Chunky</button>
+                <button type="button" data-look="iso3d">3D</button>
+              </div>
+            </div>
+          </div>
+          <div class="row"><label>Maze size</label>
+            <div class="ctl">
+              <div class="sizebtns" style="margin:0" id="mazesizebtns">
+                <button type="button" data-cell="20" title="Around 100 cells on Letter">Small</button>
+                <button type="button" data-cell="12" title="Around 340 cells on Letter">Medium</button>
+                <button type="button" data-cell="7" title="Around 1,000 cells on Letter">Large</button>
+                <button type="button" data-cell="5" title="Around 1,900 cells on Letter">Huge</button>
+              </div>
+            </div>
+          </div>
+          <div class="row"><label for="dice"></label>
+            <div class="ctl">
+              <button type="button" class="stepper" id="dice" title="Same settings, different maze" style="width:auto;padding:0 12px">Regenerate Maze</button>
+              <button type="button" class="stepper" id="surprise" title="Random everything - smash until happy" style="width:auto;padding:0 12px">&#127922;</button>
+            </div>
+          </div>
+        </fieldset>
+
+        <fieldset><legend>Colors</legend>
+          <div class="row"><label for="inkswatch">Walls</label>
+            <div class="ctl">
+              <input type="color" id="inkswatch" value="#000000">
+              <span class="presets" data-target="ink"></span>
+              <input type="text" id="inkhex" value="000000" maxlength="6">
+            </div>
+          </div>
+          <div class="row"><label for="bgswatch">Background</label>
+            <div class="ctl">
+              <input type="color" id="bgswatch" value="#ffffff">
+              <span class="presets" data-target="bg"></span>
+              <input type="text" id="bghex" value="FFFFFF" maxlength="6">
+            </div>
+          </div>
+          <div class="row">
+            <label for="solution" style="display:flex;align-items:center;gap:6px">
+              <input type="checkbox" id="solution">Solution
+            </label>
+            <div class="ctl">
+              <input type="color" id="solswatch" value="#d33682">
+              <span class="presets" data-target="sol"></span>
+              <input type="text" id="solhex" value="D33682" maxlength="6">
+            </div>
+          </div>
+        </fieldset>
+
+        <fieldset><legend>Page</legend>
+          <div class="sizebtns" id="sizebtns">
+            <button type="button" data-w="8.5" data-h="11" data-u="inch">Letter</button>
+            <button type="button" data-w="21" data-h="29.7" data-u="cm">A4</button>
+            <button type="button" data-w="11" data-h="17" data-u="inch">Tabloid</button>
+            <button type="button" data-w="8.5" data-h="8.5" data-u="inch">Square</button>
+            <button type="button" id="rotate" title="Swap width and height">Rotate</button>
+          </div>
+          <div class="row"><label for="width">Size</label>
+            <div class="ctl">
+              <input type="number" id="width" value="8.5" min="3" max="200" step="any">
+              <span class="unit">&times;</span>
+              <input type="number" id="height" value="11" min="3" max="200" step="any">
+              <select id="page_units">
+                <option value="inch" selected>inches</option>
+                <option value="cm">cm</option>
+              </select>
+            </div>
+          </div>
+        </fieldset>
+
+        <div class="actions">
+          <button type="button" id="download">Download PDF</button>
+          <button type="button" id="copylink" title="Copy a link to these exact settings">Copy Link</button>
+        </div>
+        <div class="alsorow">Also available:
+          <a href="#" id="openprint" title="Open in a browser tab, print from there">Open PDF</a> &middot;
+          <a href="#" id="dl-svg" title="Vector, for design apps">SVG</a> &middot;
+          <a href="#" id="dl-png" title="Raster at 300 dpi">PNG</a></div>
+      </form>
+    </div>
+
+    <div class="previewcol">
+      <svg id="preview" xmlns="http://www.w3.org/2000/svg"></svg>
+      <div id="pageinfo"></div>
+    </div>
+  </div>
+
+  <div class="keepblock">
+    <h3>Copy, Remix, Reuse</h3>
+    <p>Download your own copy of this utility. Works with no server required.</p>
+    <button class="keep" id="keepapp">&#8595; Download the entire app</button>
+  </div>
+
+  <div class="howto">
+    <h3>How the mazes are built</h3>
+    <h4>Difficulty levels</h4>
+    <p>Each level is a different carving process; higher levels make longer solutions and deeper wrong turns.</p>
+    <p><strong>1</strong> - Prim's algorithm, 1957</p>
+    <p><strong>2</strong> - Kruskal's algorithm, 1956</p>
+    <p><strong>3</strong> - Wilson's algorithm, 1996</p>
+    <p><strong>4</strong> - Recursive Backtracker</p>
+  </div>
+
+  <footer>
+    <p class="version">Maze Generator - Version 1.0 &middot;
+    <a href="https://incompetech.com/gallimaufry/incompetech-maze.html">check for newer versions</a> &middot;
+    <a href="https://incompetech.com/email.html">Report Problems</a></p>
+
+    <p class="license">This file and the images it produces are released under
+    <a href="https://creativecommons.org/publicdomain/zero/1.0/">CC0 1.0</a>
+    (public domain).
+    <br>Built in the spirit of the Incompetech graph paper generators by Kevin MacLeod.</p>
+  </footer>
+</div>
+
+<!-- ============================================================
+     RENDER ENGINE: display list primitives:
+       ["L", x1,y1,x2,y2]                    stroked segment
+       ["F", [[x,y],...], colorHex]          filled polygon
+       ["S", colorHex, widthPts, cap, join]  style change
+                                          cap/join: 0 butt/miter, 1 round, 2 square/bevel
+       ["T", x, y, size, text, align, font]  text; font "h"|"hb"|"tb"
+     Coordinates are PDF points, origin bottom-left, y up.
+     ============================================================ -->
+<script id="render-engine">
+"use strict";
+
+function fnum(n) { return (Math.round(n * 100) / 100).toString(); }
+
+function checkColor(input, fallback) {
+  if (input && /^[0-9a-fA-F]{6}$/.test(input)) return input.toLowerCase();
+  return fallback;
+}
+
+function correct(value, min, max) {
+  let n = parseFloat(String(value).replace(/,/g, "."));
+  if (!isFinite(n)) return min;
+  return Math.min(max, Math.max(min, n));
+}
+
+function hexToRgbTriplet(hex) {
+  return fnum(parseInt(hex.slice(0, 2), 16) / 255) + " " +
+         fnum(parseInt(hex.slice(2, 4), 16) / 255) + " " +
+         fnum(parseInt(hex.slice(4, 6), 16) / 255);
+}
+
+function pdfEscape(s) {
+  return String(s).replace(/\\/g, "\\\\").replace(/\(/g, "\\(").replace(/\)/g, "\\)");
+}
+
+// AFM widths, chars 32..126, thousandths of em
+const W_HELV = [278,278,355,556,556,889,667,191,333,333,389,584,278,333,278,278,
+556,556,556,556,556,556,556,556,556,556,278,278,584,584,584,556,1015,667,667,
+722,722,667,611,778,722,278,500,667,556,833,722,778,667,778,722,667,611,722,
+667,944,667,667,611,278,278,278,469,556,333,556,556,500,556,556,278,556,556,
+222,222,500,222,833,556,556,556,556,333,278,278,556,500,722,500,500,500,334,
+260,334,584];
+const W_HELVB = [278,333,474,556,556,889,722,238,333,333,389,584,278,333,278,278,
+556,556,556,556,556,556,556,556,556,556,333,333,584,584,584,611,975,722,722,
+722,722,667,611,778,722,278,556,722,611,833,722,778,667,778,722,667,611,722,
+667,944,667,667,611,333,278,333,584,556,333,556,611,556,611,556,333,611,611,
+278,278,556,278,889,611,611,611,611,389,556,333,611,556,778,556,556,500,389,
+280,389,584];
+const W_TIMESB = [250,333,555,500,500,1000,833,278,333,333,500,570,250,333,250,278,
+500,500,500,500,500,500,500,500,500,500,333,333,570,570,570,500,930,722,667,
+722,722,667,611,778,778,389,500,778,667,944,722,778,611,778,722,556,667,722,
+722,1000,722,722,667,333,278,333,581,500,333,500,556,444,556,444,333,500,556,
+278,333,556,278,833,556,500,556,556,444,389,333,556,500,722,500,500,444,394,
+220,394,520];
+
+const FONTS = {
+  h:  { ref: "/F1", w: W_HELV,   svg: 'font-family="Helvetica, Arial, sans-serif"' },
+  hb: { ref: "/F2", w: W_HELVB,  svg: 'font-family="Helvetica, Arial, sans-serif" font-weight="bold"' },
+  tb: { ref: "/F3", w: W_TIMESB, svg: 'font-family="Times New Roman, Times, serif" font-weight="bold"' }
+};
+
+function textWidthPts(s, size, font) {
+  const tbl = (FONTS[font] || FONTS.h).w;
+  let w = 0;
+  for (let i = 0; i < s.length; i++) {
+    const c = s.charCodeAt(i);
+    w += (c >= 32 && c <= 126) ? tbl[c - 32] : 556;
+  }
+  return (w / 1000) * size;
+}
+
+function dlToPdfOps(p, dl) {
+  const ops = [];
+  ops.push(hexToRgbTriplet(p.bgColor) + " rg");
+  ops.push("0 0 " + fnum(p.width) + " " + fnum(p.height) + " re f");
+  let color = p.inkColor, w = 1, cap = 0, join = 0;
+  ops.push("1 w"); ops.push("0 J"); ops.push("0 j");
+  ops.push(hexToRgbTriplet(color) + " RG");
+  ops.push(hexToRgbTriplet(color) + " rg");
+  for (const pr of dl) {
+    const t = pr[0];
+    if (t === "T") {
+      const size = pr[3], str = String(pr[4]), font = pr[6] || "h";
+      let x = pr[1];
+      const tw = textWidthPts(str, size, font);
+      if (pr[5] === "c") x -= tw / 2;
+      else if (pr[5] === "r") x -= tw;
+      ops.push("BT " + FONTS[font].ref + " " + fnum(size) + " Tf " +
+        fnum(x) + " " + fnum(pr[2]) + " Td (" + pdfEscape(str) + ") Tj ET");
+    } else if (t === "L") {
+      ops.push(fnum(pr[1]) + " " + fnum(pr[2]) + " m " +
+               fnum(pr[3]) + " " + fnum(pr[4]) + " l S");
+    } else if (t === "F") {
+      const pts = pr[1], col = pr[2];
+      ops.push(hexToRgbTriplet(col) + " rg");
+      ops.push(fnum(pts[0][0]) + " " + fnum(pts[0][1]) + " m");
+      for (let i = 1; i < pts.length; i++) ops.push(fnum(pts[i][0]) + " " + fnum(pts[i][1]) + " l");
+      ops.push("f");
+      color = "";  // force next S to re-emit fill color
+    } else if (t === "S") {
+      if (pr[1] !== color) {
+        color = pr[1];
+        ops.push(hexToRgbTriplet(color) + " RG");
+        ops.push(hexToRgbTriplet(color) + " rg");
+      }
+      if (pr[2] !== w) { w = pr[2]; ops.push(fnum(w) + " w"); }
+      const nc = pr[3] || 0, nj = pr[4] || 0;
+      if (nc !== cap) { cap = nc; ops.push(cap + " J"); }
+      if (nj !== join) { join = nj; ops.push(join + " j"); }
+    }
+  }
+  return ops;
+}
+
+function buildPdf(p, dl, title) {
+  const now = new Date();
+  const z = (n) => String(n).padStart(2, "0");
+  const pdfDate = "D:" + now.getUTCFullYear() + z(now.getUTCMonth() + 1) +
+    z(now.getUTCDate()) + z(now.getUTCHours()) + z(now.getUTCMinutes()) +
+    z(now.getUTCSeconds()) + "+00'00'";
+  const safeTitle = String(title).replace(/[\\()]/g, "");
+  const fontDict = "<< /Font << /F1 6 0 R /F2 7 0 R /F3 8 0 R >> >>";
+  const stream = dlToPdfOps(p, dl).join("\n");
+  const objs = [
+    "<< /Type /Catalog /Pages 2 0 R >>",                                  // 1
+    "<< /Type /Pages /Kids [3 0 R] /Count 1 >>",                          // 2
+    "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 " + fnum(p.width) + " " +
+      fnum(p.height) + "] /Contents 4 0 R /Resources " + fontDict + " >>", // 3
+    "<< /Length " + stream.length + " >>\nstream\n" + stream + "\nendstream", // 4
+    "<< /Title (" + safeTitle + ") /Author (incompetech.com) " +
+      "/Creator (https://incompetech.com/) /Subject (Maze) " +
+      "/CreationDate (" + pdfDate + ") >>",                                // 5 info
+    "<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>", // 6
+    "<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold /Encoding /WinAnsiEncoding >>", // 7
+    "<< /Type /Font /Subtype /Type1 /BaseFont /Times-Bold /Encoding /WinAnsiEncoding >>"  // 8
+  ];
+  let out = "%PDF-1.4\n";
+  const offsets = [];
+  for (let i = 0; i < objs.length; i++) {
+    offsets.push(out.length);
+    out += (i + 1) + " 0 obj\n" + objs[i] + "\nendobj\n";
+  }
+  const xrefPos = out.length;
+  out += "xref\n0 " + (objs.length + 1) + "\n0000000000 65535 f \n";
+  for (const off of offsets) out += String(off).padStart(10, "0") + " 00000 n \n";
+  out += "trailer\n<< /Size " + (objs.length + 1) +
+    " /Root 1 0 R /Info 5 0 R >>\nstartxref\n" + xrefPos + "\n%%EOF";
+  const bytes = new Uint8Array(out.length);
+  for (let i = 0; i < out.length; i++) bytes[i] = out.charCodeAt(i) & 0xff;
+  return bytes;
+}
+
+function svgEscape(s) {
+  return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;");
+}
+
+function capName(c) { return c === 1 ? "round" : (c === 2 ? "square" : "butt"); }
+function joinName(j) { return j === 1 ? "round" : (j === 2 ? "bevel" : "miter"); }
+
+function dlToSvgBody(p, dl) {
+  const H = p.height;
+  let body = '<rect x="0" y="0" width="' + fnum(p.width) + '" height="' +
+    fnum(H) + '" fill="#' + p.bgColor + '"/>';
+  let color = p.inkColor, w = 1, cap = "butt", join = "miter";
+  let strokeD = "";
+  function flush() {
+    if (strokeD) {
+      body += '<path d="' + strokeD + '" stroke="#' + color +
+        '" stroke-width="' + fnum(w) + '" fill="none" stroke-linecap="' + cap +
+        '" stroke-linejoin="' + join + '"/>';
+      strokeD = "";
+    }
+  }
+  for (const pr of dl) {
+    const t = pr[0];
+    if (t === "T") {
+      flush();
+      const anchor = pr[5] === "c" ? "middle" : (pr[5] === "r" ? "end" : "start");
+      body += '<text x="' + fnum(pr[1]) + '" y="' + fnum(H - pr[2]) +
+        '" font-size="' + fnum(pr[3]) + '" ' + FONTS[pr[6] || "h"].svg +
+        ' text-anchor="' + anchor + '" fill="#' + color + '">' +
+        svgEscape(pr[4]) + "</text>";
+    } else if (t === "L") {
+      strokeD += "M" + fnum(pr[1]) + " " + fnum(H - pr[2]) +
+                 "L" + fnum(pr[3]) + " " + fnum(H - pr[4]);
+    } else if (t === "F") {
+      flush();
+      const pts = pr[1];
+      let d = "M" + fnum(pts[0][0]) + " " + fnum(H - pts[0][1]);
+      for (let i = 1; i < pts.length; i++) d += "L" + fnum(pts[i][0]) + " " + fnum(H - pts[i][1]);
+      d += "Z";
+      body += '<path d="' + d + '" fill="#' + pr[2] + '"/>';
+    } else if (t === "S") {
+      flush();
+      color = pr[1]; w = pr[2]; cap = capName(pr[3] || 0); join = joinName(pr[4] || 0);
+    }
+  }
+  flush();
+  return body;
+}
+</script>
+
+<!-- ============================================================
+     MAZE ENGINE: geometry builders, carving algorithms, solver,
+     renderer. All pure functions; DOM-independent.
+     ============================================================ -->
+<script id="maze-engine">
+"use strict";
+
+// ---------- seeded RNG (mulberry32) ----------
+function makeRng(seed) {
+  let a = seed >>> 0;
+  return function () {
+    a |= 0; a = (a + 0x6D2B79F5) | 0;
+    let t = Math.imul(a ^ (a >>> 15), 1 | a);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+function shuffle(arr, rng) {
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = Math.floor(rng() * (i + 1));
+    const t = arr[i]; arr[i] = arr[j]; arr[j] = t;
+  }
+  return arr;
+}
+
+// ---------- color helpers ----------
+function mixHex(h1, h2, t) {
+  const p = (h, i) => parseInt(h.slice(i, i + 2), 16);
+  const c = (i) => {
+    const v = Math.round(p(h1, i) * (1 - t) + p(h2, i) * t);
+    return Math.max(0, Math.min(255, v)).toString(16).padStart(2, "0");
+  };
+  return c(0) + c(2) + c(4);
+}
+
+// ---------- usable page area (top margin may be enlarged for a title) ----------
+function usableArea(p) {
+  const mX = p.margin, mT = (p.marginTop || p.margin), mB = p.margin;
+  return { mX, mT, mB, W: p.width - 2 * mX, H: p.height - mT - mB };
+}
+
+// ---------- shared-edge polygon assembler (square/hex/tri) ----------
+function ptKey(x, y) { return Math.round(x * 100) + "," + Math.round(y * 100); }
+function edgeKey(p1, p2) {
+  const a = ptKey(p1[0], p1[1]), b = ptKey(p2[0], p2[1]);
+  return a < b ? a + "|" + b : b + "|" + a;
+}
+
+function finalizeCells(cells, p) {
+  let minx = Infinity, miny = Infinity, maxx = -Infinity, maxy = -Infinity;
+  for (const c of cells) for (const v of c.poly) {
+    if (v[0] < minx) minx = v[0];
+    if (v[1] < miny) miny = v[1];
+    if (v[0] > maxx) maxx = v[0];
+    if (v[1] > maxy) maxy = v[1];
+  }
+  const ua = usableArea(p);
+  const usableW = ua.W, usableH = ua.H;
+  const gw = maxx - minx, gh = maxy - miny;
+  const ox = ua.mX + (usableW - gw) / 2 - minx;
+  const oy = ua.mB + (usableH - gh) / 2 - miny;
+  for (const c of cells) {
+    c.poly = c.poly.map((v) => [v[0] + ox, v[1] + oy]);
+    c.center = [c.center[0] + ox, c.center[1] + oy];
+  }
+  return cells;
+}
+
+function buildFromPolys(cells) {
+  const emap = new Map();
+  cells.forEach((cell, ci) => {
+    const P = cell.poly, m = P.length;
+    for (let k = 0; k < m; k++) {
+      const p1 = P[k], p2 = P[(k + 1) % m];
+      const key = edgeKey(p1, p2);
+      let e = emap.get(key);
+      if (!e) { e = { pts: [p1, p2], cells: [] }; emap.set(key, e); }
+      e.cells.push(ci);
+    }
+  });
+  const internal = [], boundary = [];
+  for (const e of emap.values()) {
+    if (e.cells.length === 2) internal.push({ a: e.cells[0], b: e.cells[1], pts: e.pts });
+    else boundary.push({ cell: e.cells[0], pts: e.pts });
+  }
+  return { n: cells.length, centers: cells.map((c) => c.center), internal, boundary };
+}
+
+function pickEndpoints(build) {
+  let topI = -1, botI = -1, topY = -1e9, botY = 1e9, topX = 1e9, botX = -1e9;
+  build.boundary.forEach((e, i) => {
+    const A = e.pts[0], B = e.pts[e.pts.length - 1];
+    const mx = (A[0] + B[0]) / 2, my = (A[1] + B[1]) / 2;
+    if (my > topY + 0.5 || (Math.abs(my - topY) <= 0.5 && mx < topX)) { topY = my; topX = mx; topI = i; }
+    if (my < botY - 0.5 || (Math.abs(my - botY) <= 0.5 && mx > botX)) { botY = my; botX = mx; botI = i; }
+  });
+  build.openBoundary = new Set([topI, botI]);
+  build.entranceCell = build.boundary[topI].cell;
+  build.exitCell = build.boundary[botI].cell;
+  const te = build.boundary[topI].pts, be = build.boundary[botI].pts;
+  build.entranceMid = [(te[0][0] + te[te.length - 1][0]) / 2, (te[0][1] + te[te.length - 1][1]) / 2];
+  build.exitMid = [(be[0][0] + be[be.length - 1][0]) / 2, (be[0][1] + be[be.length - 1][1]) / 2];
+}
+
+// ---------- geometry builders ----------
+function buildSquare(p) {
+  const ua = usableArea(p);
+  const usableW = ua.W, usableH = ua.H;
+  const s = p.cellPts;
+  const cols = Math.max(2, Math.floor(usableW / s));
+  const rows = Math.max(2, Math.floor(usableH / s));
+  const gw = cols * s, gh = rows * s;
+  const ox = ua.mX + (usableW - gw) / 2;
+  const oy = ua.mB + (usableH - gh) / 2;
+  const idx = (c, r) => r * cols + c;
+  const centers = new Array(cols * rows);
+  for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++)
+    centers[idx(c, r)] = [ox + (c + 0.5) * s, oy + (r + 0.5) * s];
+  const internal = [];
+  for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++) {
+    if (c < cols - 1) {
+      internal.push({ a: idx(c, r), b: idx(c + 1, r),
+        pts: [[ox + (c + 1) * s, oy + r * s], [ox + (c + 1) * s, oy + (r + 1) * s]] });
+    }
+    if (r < rows - 1) {
+      internal.push({ a: idx(c, r), b: idx(c, r + 1),
+        pts: [[ox + c * s, oy + (r + 1) * s], [ox + (c + 1) * s, oy + (r + 1) * s]] });
+    }
+  }
+  const boundary = [];
+  let entB = -1, exitB = -1;
+  for (let r = 0; r < rows; r++) {
+    boundary.push({ cell: idx(0, r), pts: [[ox, oy + r * s], [ox, oy + (r + 1) * s]] });
+    boundary.push({ cell: idx(cols - 1, r), pts: [[ox + cols * s, oy + r * s], [ox + cols * s, oy + (r + 1) * s]] });
+  }
+  for (let c = 0; c < cols; c++) {
+    const bBot = boundary.length;
+    boundary.push({ cell: idx(c, 0), pts: [[ox + c * s, oy], [ox + (c + 1) * s, oy]] });
+    const bTop = boundary.length;
+    boundary.push({ cell: idx(c, rows - 1), pts: [[ox + c * s, oy + rows * s], [ox + (c + 1) * s, oy + rows * s]] });
+    if (c === 0) entB = bTop;
+    if (c === cols - 1) exitB = bBot;
+  }
+  const build = { n: cols * rows, centers, internal, boundary, unit: s };
+  build.openBoundary = new Set([entB, exitB]);
+  build.entranceCell = idx(0, rows - 1);
+  build.exitCell = idx(cols - 1, 0);
+  const te = boundary[entB].pts, be = boundary[exitB].pts;
+  build.entranceMid = [(te[0][0] + te[1][0]) / 2, (te[0][1] + te[1][1]) / 2];
+  build.exitMid = [(be[0][0] + be[1][0]) / 2, (be[0][1] + be[1][1]) / 2];
+  return build;
+}
+
+function buildHex(p) {
+  const ua = usableArea(p);
+  const usableW = ua.W, usableH = ua.H;
+  const R = p.cellPts / Math.sqrt(3);
+  const hspace = Math.sqrt(3) * R, vspace = 1.5 * R;
+  const cols = Math.max(2, Math.floor((usableW - 0.5 * hspace) / hspace));
+  const rows = Math.max(2, Math.floor((usableH - 0.5 * R) / vspace));
+  const cells = [];
+  for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++) {
+    const cx = hspace * (c + (r & 1 ? 0.5 : 0)) + hspace / 2;
+    const cy = vspace * r + R;
+    const poly = [];
+    for (let k = 0; k < 6; k++) {
+      const a = (Math.PI / 180) * (60 * k + 30);
+      poly.push([cx + R * Math.cos(a), cy + R * Math.sin(a)]);
+    }
+    cells.push({ poly, center: [cx, cy] });
+  }
+  finalizeCells(cells, p);
+  const b = buildFromPolys(cells);
+  b.unit = p.cellPts;
+  b.thickScale = 0.55; // hex openings are ~0.58 unit; full-fat chunky walls nearly seal them
+  pickEndpoints(b);
+  return b;
+}
+
+function buildTriangle(p) {
+  const ua = usableArea(p);
+  const usableW = ua.W, usableH = ua.H;
+  const hw = p.cellPts / 2, h = p.cellPts * Math.sqrt(3) / 2;
+  const cols = Math.max(2, Math.floor(usableW / hw) - 1);
+  const rows = Math.max(2, Math.floor(usableH / h));
+  const cells = [];
+  for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++) {
+    let poly;
+    if ((r + c) % 2 === 0) {
+      poly = [[c * hw, r * h], [(c + 2) * hw, r * h], [(c + 1) * hw, (r + 1) * h]];
+    } else {
+      poly = [[c * hw, (r + 1) * h], [(c + 2) * hw, (r + 1) * h], [(c + 1) * hw, r * h]];
+    }
+    const center = [(poly[0][0] + poly[1][0] + poly[2][0]) / 3,
+                    (poly[0][1] + poly[1][1] + poly[2][1]) / 3];
+    cells.push({ poly, center });
+  }
+  finalizeCells(cells, p);
+  const b = buildFromPolys(cells);
+  b.unit = p.cellPts * 0.5;
+  b.thickScale = 0.8; // sharp corners crowd the corridors; thin the chunky looks a little
+  pickEndpoints(b);
+  return b;
+}
+
+function buildTheta(p) {
+  const ua = usableArea(p);
+  const usableW = ua.W, usableH = ua.H;
+  const rH = p.cellPts;
+  const maxR = Math.min(usableW, usableH) / 2;
+  const rings = Math.max(3, Math.floor(maxR / rH));
+  const counts = [1];
+  for (let r = 1; r < rings; r++) {
+    const radius = r * rH;
+    const circ = 2 * Math.PI * radius;
+    const prev = counts[r - 1];
+    const est = circ / prev;
+    const ratio = Math.max(1, Math.round(est / rH));
+    counts.push(prev * ratio);
+  }
+  const cellIndex = [];
+  let idx = 0;
+  for (let r = 0; r < rings; r++) {
+    cellIndex[r] = [];
+    for (let i = 0; i < counts[r]; i++) cellIndex[r][i] = idx++;
+  }
+  const n = idx;
+  const cx = ua.mX + usableW / 2, cy = ua.mB + usableH / 2;
+  const pt = (radius, ang) => [cx + radius * Math.cos(ang), cy + radius * Math.sin(ang)];
+  const centers = new Array(n);
+  for (let r = 0; r < rings; r++) {
+    const D = 2 * Math.PI / counts[r];
+    for (let i = 0; i < counts[r]; i++) {
+      if (r === 0) centers[cellIndex[0][0]] = [cx, cy];
+      else centers[cellIndex[r][i]] = pt((r + 0.5) * rH, (i + 0.5) * D);
+    }
+  }
+  function arcPts(radius, a0, a1) {
+    const seg = Math.max(2, Math.ceil(Math.abs(a1 - a0) / 0.2));
+    const arr = [];
+    for (let s = 0; s <= seg; s++) arr.push(pt(radius, a0 + (a1 - a0) * s / seg));
+    return arr;
+  }
+  const internal = [];
+  for (let r = 1; r < rings; r++) {
+    const cnt = counts[r], D = 2 * Math.PI / cnt, innerR = r * rH, outerR = (r + 1) * rH;
+    for (let i = 0; i < cnt; i++) {
+      if (cnt > 1) {
+        const j = (i + 1) % cnt, ang = (i + 1) * D;
+        internal.push({ a: cellIndex[r][i], b: cellIndex[r][j], pts: [pt(innerR, ang), pt(outerR, ang)] });
+      }
+    }
+    const pcnt = counts[r - 1], ratio = cnt / pcnt;
+    for (let i = 0; i < cnt; i++) {
+      const parent = Math.floor(i / ratio);
+      internal.push({ a: cellIndex[r][i], b: cellIndex[r - 1][parent], pts: arcPts(innerR, i * D, (i + 1) * D) });
+    }
+  }
+  const boundary = [];
+  const rout = rings - 1, cntO = counts[rout], Do = 2 * Math.PI / cntO, R_out = rings * rH;
+  for (let i = 0; i < cntO; i++)
+    boundary.push({ cell: cellIndex[rout][i], pts: arcPts(R_out, i * Do, (i + 1) * Do) });
+  function angDiff(a, b) {
+    let d = a - b;
+    while (d > Math.PI) d -= 2 * Math.PI;
+    while (d < -Math.PI) d += 2 * Math.PI;
+    return Math.abs(d);
+  }
+  let topI = 0, botI = 0, bestT = 1e9, bestB = 1e9;
+  boundary.forEach((e, i) => {
+    const mid = e.pts[Math.floor(e.pts.length / 2)];
+    const ang = Math.atan2(mid[1] - cy, mid[0] - cx);
+    const dT = angDiff(ang, Math.PI / 2), dB = angDiff(ang, -Math.PI / 2);
+    if (dT < bestT) { bestT = dT; topI = i; }
+    if (dB < bestB) { bestB = dB; botI = i; }
+  });
+  const midOf = (e) => e.pts[Math.floor(e.pts.length / 2)];
+  return {
+    n, centers, internal, boundary, unit: rH,
+    openBoundary: new Set([topI, botI]),
+    entranceCell: boundary[topI].cell, exitCell: boundary[botI].cell,
+    entranceMid: midOf(boundary[topI]), exitMid: midOf(boundary[botI])
+  };
+}
+
+// ---------- adjacency graph ----------
+function buildGraph(build) {
+  const adj = Array.from({ length: build.n }, () => []);
+  build.internal.forEach((e, ei) => {
+    adj[e.a].push({ to: e.b, ei });
+    adj[e.b].push({ to: e.a, ei });
+  });
+  return adj;
+}
+
+// ---------- carving algorithms (return Set of open internal-edge indices) ----------
+function carveBacktracker(build, adj, rng) {
+  const linked = new Set(), visited = new Array(build.n).fill(false);
+  const stack = [0]; visited[0] = true;
+  while (stack.length) {
+    const c = stack[stack.length - 1];
+    const nb = adj[c].filter((x) => !visited[x.to]);
+    if (!nb.length) { stack.pop(); continue; }
+    const pick = nb[Math.floor(rng() * nb.length)];
+    linked.add(pick.ei); visited[pick.to] = true; stack.push(pick.to);
+  }
+  return linked;
+}
+function carvePrim(build, adj, rng) {
+  const linked = new Set(), inTree = new Array(build.n).fill(false);
+  // Random root: a fixed root pins the tree's "star" to one corner, which
+  // makes every solution path elbow around that corner - too predictable.
+  const root = Math.floor(rng() * build.n);
+  inTree[root] = true;
+  let frontier = adj[root].slice();
+  while (frontier.length) {
+    const idx = Math.floor(rng() * frontier.length);
+    const e = frontier.splice(idx, 1)[0];
+    if (inTree[e.to]) continue;
+    linked.add(e.ei); inTree[e.to] = true;
+    for (const x of adj[e.to]) if (!inTree[x.to]) frontier.push(x);
+  }
+  return linked;
+}
+function carveKruskal(build, adj, rng) {
+  const uf = new Array(build.n);
+  for (let i = 0; i < build.n; i++) uf[i] = i;
+  function find(x) { while (uf[x] !== x) { uf[x] = uf[uf[x]]; x = uf[x]; } return x; }
+  const edges = build.internal.map((_, i) => i);
+  shuffle(edges, rng);
+  const linked = new Set();
+  for (const ei of edges) {
+    const e = build.internal[ei], ra = find(e.a), rb = find(e.b);
+    if (ra !== rb) { uf[ra] = rb; linked.add(ei); }
+  }
+  return linked;
+}
+function carveWilson(build, adj, rng) {
+  const linked = new Set(), inMaze = new Array(build.n).fill(false);
+  let first = Math.floor(rng() * build.n);
+  inMaze[first] = true;
+  const cells = [...Array(build.n).keys()];
+  shuffle(cells, rng);
+  for (const start of cells) {
+    if (inMaze[start]) continue;
+    let path = [start];
+    const inPath = new Map(); inPath.set(start, 0);
+    let cur = start;
+    while (!inMaze[cur]) {
+      const nb = adj[cur][Math.floor(rng() * adj[cur].length)];
+      const nxt = nb.to;
+      if (inPath.has(nxt)) {
+        const at = inPath.get(nxt);
+        for (let k = path.length - 1; k > at; k--) inPath.delete(path[k]);
+        path.length = at + 1;
+        cur = nxt;
+      } else {
+        inPath.set(nxt, path.length); path.push(nxt); cur = nxt;
+      }
+    }
+    for (let i = 0; i < path.length - 1; i++) {
+      const a = path[i], b = path[i + 1];
+      const e = adj[a].find((x) => x.to === b);
+      linked.add(e.ei); inMaze[a] = true;
+    }
+    inMaze[path[path.length - 1]] = true;
+  }
+  return linked;
+}
+const ALGOS = {
+  backtracker: (b, a, r) => carveBacktracker(b, a, r),
+  prim: (b, a, r) => carvePrim(b, a, r),
+  kruskal: (b, a, r) => carveKruskal(b, a, r),
+  wilson: (b, a, r) => carveWilson(b, a, r)
+};
+
+// ---------- solver (BFS on carved tree) ----------
+function solve(build, adj, linked, start, end) {
+  const prev = new Array(build.n).fill(-1);
+  const seen = new Array(build.n).fill(false);
+  const q = [start]; seen[start] = true;
+  let head = 0;
+  while (head < q.length) {
+    const c = q[head++];
+    if (c === end) break;
+    for (const x of adj[c]) if (linked.has(x.ei) && !seen[x.to]) {
+      seen[x.to] = true; prev[x.to] = c; q.push(x.to);
+    }
+  }
+  if (!seen[end]) return [];
+  const path = [];
+  let c = end;
+  while (c !== -1) { path.push(c); c = prev[c]; }
+  path.reverse();
+  return path;
+}
+
+// ---------- renderer ----------
+function lookStyle(look, unit) {
+  switch (look) {
+    case "thick": return { w: unit * 0.34, cap: 2, join: 0, jitter: false };
+    case "round": return { w: Math.max(1.4, unit * 0.16), cap: 1, join: 1, jitter: false };
+    case "hand":  return { w: Math.max(0.9, Math.min(unit * 0.06, 1.8)), cap: 1, join: 1, jitter: true };
+    default:      return { w: Math.max(0.8, Math.min(unit * 0.07, 2)), cap: 0, join: 0, jitter: false };
+  }
+}
+function emitHand(dl, pts, rng, unit) {
+  const amp = Math.min(unit * 0.05, 1.5);
+  for (let i = 0; i < pts.length - 1; i++) {
+    const x1 = pts[i][0], y1 = pts[i][1], x2 = pts[i + 1][0], y2 = pts[i + 1][1];
+    const dx = x2 - x1, dy = y2 - y1, len = Math.hypot(dx, dy);
+    if (len < 0.01) continue;
+    const nx = -dy / len, ny = dx / len;
+    const segs = Math.max(2, Math.round(len / (unit * 0.5)));
+    const ox = (dx / len) * amp * (rng() * 0.5 + 0.2);
+    const oy = (dy / len) * amp * (rng() * 0.5 + 0.2);
+    let px = x1 - ox, py = y1 - oy;
+    for (let s = 1; s <= segs; s++) {
+      const t = s / segs;
+      let X = x1 + dx * t, Y = y1 + dy * t;
+      const wob = s === segs ? 0 : (rng() * 2 - 1) * amp;
+      X += nx * wob; Y += ny * wob;
+      if (s === segs) { X += (dx / len) * ox; Y += (dy / len) * oy; }
+      dl.push(["L", px, py, X, Y]);
+      px = X; py = Y;
+    }
+  }
+}
+
+function collectWalls(build, linked) {
+  const walls = [];
+  build.internal.forEach((e, ei) => { if (!linked.has(ei)) walls.push(e.pts); });
+  build.boundary.forEach((e, i) => {
+    if (!(build.openBoundary && build.openBoundary.has(i))) walls.push(e.pts);
+  });
+  return walls;
+}
+// Isometric 3D: extrude each wall segment into a standing ribbon, painter-sorted.
+function renderIso(build, linked, path, p) {
+  const dl = [];
+  const unit = build.unit;
+  const walls = collectWalls(build, linked);
+  let minx = Infinity, miny = Infinity, maxx = -Infinity, maxy = -Infinity;
+  for (const pts of walls) for (const v of pts) {
+    if (v[0] < minx) minx = v[0]; if (v[1] < miny) miny = v[1];
+    if (v[0] > maxx) maxx = v[0]; if (v[1] > maxy) maxy = v[1];
+  }
+  if (!isFinite(minx)) { return dl; }
+  const cx = (minx + maxx) / 2, cy = (miny + maxy) / 2;
+  const Hgt = unit * 0.45;
+  const iso = (x, y, z) => {
+    const dx = x - cx, dy = y - cy;
+    return [dx - dy, (dx + dy) * 0.5 + z];
+  };
+  let pminx = Infinity, pminy = Infinity, pmaxx = -Infinity, pmaxy = -Infinity;
+  const acc = (pt) => {
+    if (pt[0] < pminx) pminx = pt[0]; if (pt[1] < pminy) pminy = pt[1];
+    if (pt[0] > pmaxx) pmaxx = pt[0]; if (pt[1] > pmaxy) pmaxy = pt[1];
+  };
+  for (const pts of walls) for (const v of pts) { acc(iso(v[0], v[1], 0)); acc(iso(v[0], v[1], Hgt)); }
+  const projW = pmaxx - pminx || 1, projH = pmaxy - pminy || 1;
+  const ua = usableArea(p);
+  const scale = Math.min(ua.W / projW, ua.H / projH);
+  const ox = ua.mX + (ua.W - projW * scale) / 2 - pminx * scale;
+  const oy = ua.mB + (ua.H - projH * scale) / 2 - pminy * scale;
+  const scr = (pt) => [ox + pt[0] * scale, oy + pt[1] * scale];
+
+  const segs = [];
+  for (const pts of walls) for (let i = 0; i < pts.length - 1; i++) {
+    const a = pts[i], b = pts[i + 1];
+    const sum = (a[0] - cx) + (a[1] - cy) + (b[0] - cx) + (b[1] - cy);
+    segs.push({ a, b, sum, ns: Math.abs(b[1] - a[1]) > Math.abs(b[0] - a[0]) });
+  }
+  segs.sort((u, v) => v.sum - u.sum); // far first (painter's algorithm)
+  const faceNS = mixHex(p.inkColor, p.bgColor, 0.58);
+  const faceEW = mixHex(p.inkColor, p.bgColor, 0.32);
+  const outlineW = Math.max(0.4, Math.min(unit * scale * 0.04, 1.1));
+  for (const s of segs) {
+    const g1 = scr(iso(s.a[0], s.a[1], 0));
+    const g2 = scr(iso(s.b[0], s.b[1], 0));
+    const t2 = scr(iso(s.b[0], s.b[1], Hgt));
+    const t1 = scr(iso(s.a[0], s.a[1], Hgt));
+    dl.push(["F", [g1, g2, t2, t1], s.ns ? faceNS : faceEW]);
+    dl.push(["S", p.inkColor, outlineW, 1, 1]);
+    dl.push(["L", g1[0], g1[1], g2[0], g2[1]]);
+    dl.push(["L", g2[0], g2[1], t2[0], t2[1]]);
+    dl.push(["L", t2[0], t2[1], t1[0], t1[1]]);
+    dl.push(["L", t1[0], t1[1], g1[0], g1[1]]);
+  }
+  if (path && path.length) {
+    const solW = Math.max(1.6, unit * scale * 0.12);
+    dl.push(["S", p.solColor, solW, 1, 1]);
+    const poly = [build.entranceMid, ...path.map((ci) => build.centers[ci]), build.exitMid]
+      .map((v) => scr(iso(v[0], v[1], Hgt * 0.5)));
+    for (let i = 0; i < poly.length - 1; i++)
+      dl.push(["L", poly[i][0], poly[i][1], poly[i + 1][0], poly[i + 1][1]]);
+  }
+  return dl;
+}
+
+function renderMaze(build, linked, path, look, p, rng) {
+  if (look === "iso3d") return renderIso(build, linked, path, p);
+  const dl = [];
+  const unit = build.unit;
+  const walls = collectWalls(build, linked);
+  const st = lookStyle(look, unit);
+  const chunk = build.thickScale || 1; // geometry-aware slimming for the chunky family
+  if (look === "thick" || look === "round") st.w *= chunk;
+
+  if (look === "shadow") {
+    const sh = mixHex(p.bgColor, p.inkColor, 0.42);
+    const off = Math.max(1.2, unit * 0.12);
+    dl.push(["S", sh, st.w, 1, 1]);
+    for (const pts of walls) for (let i = 0; i < pts.length - 1; i++)
+      dl.push(["L", pts[i][0] + off, pts[i][1] - off, pts[i + 1][0] + off, pts[i + 1][1] - off]);
+    dl.push(["S", p.inkColor, st.w, 1, 1]);
+    for (const pts of walls) for (let i = 0; i < pts.length - 1; i++)
+      dl.push(["L", pts[i][0], pts[i][1], pts[i + 1][0], pts[i + 1][1]]);
+  } else if (look === "raised") {
+    // Top-down raised walls: ground shadow, solid core, top-left highlight.
+    const W = Math.max(2, unit * 0.26 * chunk);
+    const off = Math.max(1, W * 0.4), ho = off * 0.55;
+    const sh = mixHex(p.bgColor, p.inkColor, 0.30);
+    const hl = mixHex(p.inkColor, p.bgColor, 0.5);
+    dl.push(["S", sh, W, 1, 1]);
+    for (const pts of walls) for (let i = 0; i < pts.length - 1; i++)
+      dl.push(["L", pts[i][0] + off, pts[i][1] - off, pts[i + 1][0] + off, pts[i + 1][1] - off]);
+    dl.push(["S", p.inkColor, W, 1, 1]);
+    for (const pts of walls) for (let i = 0; i < pts.length - 1; i++)
+      dl.push(["L", pts[i][0], pts[i][1], pts[i + 1][0], pts[i + 1][1]]);
+    dl.push(["S", hl, Math.max(0.8, W * 0.34), 1, 1]);
+    for (const pts of walls) for (let i = 0; i < pts.length - 1; i++)
+      dl.push(["L", pts[i][0] - ho, pts[i][1] + ho, pts[i + 1][0] - ho, pts[i + 1][1] + ho]);
+  } else {
+    dl.push(["S", p.inkColor, st.w, st.cap, st.join]);
+    for (const pts of walls) {
+      if (st.jitter) emitHand(dl, pts, rng, unit);
+      else for (let i = 0; i < pts.length - 1; i++)
+        dl.push(["L", pts[i][0], pts[i][1], pts[i + 1][0], pts[i + 1][1]]);
+    }
+  }
+
+  if (path && path.length) {
+    const solW = Math.max(1.6, unit * 0.13);
+    dl.push(["S", p.solColor, solW, 1, 1]);
+    const poly = [build.entranceMid, ...path.map((ci) => build.centers[ci]), build.exitMid];
+    if (look === "hand") emitHand(dl, poly, rng, unit);
+    else for (let i = 0; i < poly.length - 1; i++)
+      dl.push(["L", poly[i][0], poly[i][1], poly[i + 1][0], poly[i + 1][1]]);
+  }
+  return dl;
+}
+
+// ---------- top-level ----------
+function buildGeometry(p) {
+  if (p.geom === "hex") return buildHex(p);
+  if (p.geom === "tri") return buildTriangle(p);
+  if (p.geom === "theta") return buildTheta(p);
+  return buildSquare(p);
+}
+function generateMaze(p) {
+  const build = buildGeometry(p);
+  const adj = buildGraph(build);
+  const rng = makeRng(p.seed);
+  const carve = ALGOS[p.algo] || ALGOS.backtracker;
+  const linked = carve(build, adj, rng);
+  let path = null;
+  if (p.solution) path = solve(build, adj, linked, build.entranceCell, build.exitCell);
+  const rngJit = makeRng((p.seed ^ 0x9e3779b9) >>> 0);
+  const dl = renderMaze(build, linked, path, p.look, p, rngJit);
+  return { build, adj, linked, path, dl };
+}
+
+if (typeof module !== "undefined" && module.exports) {
+  module.exports = {
+    makeRng, generateMaze, buildGeometry, buildGraph, ALGOS, solve,
+    buildSquare, buildHex, buildTriangle, buildTheta
+  };
+}
+</script>
+
+<!-- ============================================================
+     UI
+     ============================================================ -->
+<script>
+"use strict";
+(function () {
+  const $ = (id) => document.getElementById(id);
+  // Button-driven settings live here, not in hidden form elements.
+  const sel = { geom: "square", algo: "kruskal", look: "hand", cell: 12, seed: 1234 };
+  const PRESETS = {
+    ink: ["000000", "333333", "0000b3", "b30000", "004400", "3a5fcd"],
+    bg:  ["FFFFFF", "FFF4DE", "f4faf4", "eef2ff", "fdf6e3", "111111"],
+    sol: ["d33682", "2aa198", "268bd2", "b58900", "dc322f", "6c71c4"]
+  };
+  const PREFS_KEY = "mazeGenPrefs";
+
+  $("nojs").style.display = "none";
+  $("app").style.display = "";
+
+  // color presets
+  document.querySelectorAll(".presets").forEach((span) => {
+    const target = span.dataset.target;
+    PRESETS[target].forEach((c) => {
+      const b = document.createElement("button");
+      b.type = "button";
+      b.style.background = "#" + c;
+      b.title = "#" + c;
+      b.addEventListener("click", () => {
+        $(target + "swatch").value = "#" + c.toLowerCase();
+        $(target + "hex").value = c;
+        refresh();
+      });
+      span.appendChild(b);
+    });
+  });
+
+  function collect() {
+    let width = correct($("width").value, 3, 200);
+    let height = correct($("height").value, 3, 200);
+    if ($("page_units").value === "cm") { width /= 2.54; height /= 2.54; }
+    width = Math.floor(width * 72);
+    height = Math.floor(height * 72);
+    const cellMm = correct(sel.cell, 3, 60);
+    const cellPts = cellMm / 25.4 * 72;
+    const margin = Math.max(18, Math.min(width, height) * 0.05);
+    return {
+      width, height, cellPts, margin,
+      geom: sel.geom,
+      algo: sel.algo,
+      look: sel.look,
+      seed: Math.floor(correct(sel.seed, 0, 999999999)),
+      solution: $("solution").checked,
+      inkColor: checkColor($("inkhex").value.replace(/^#/, ""), "000000"),
+      bgColor: checkColor($("bghex").value.replace(/^#/, ""), "ffffff"),
+      solColor: checkColor($("solhex").value.replace(/^#/, ""), "d33682")
+    };
+  }
+
+  function syncAlgoButtons() {
+    const v = sel.algo;
+    document.querySelectorAll("#algobtns button").forEach((b) => {
+      b.classList.toggle("active", b.dataset.algo === v);
+    });
+  }
+  document.querySelectorAll("#algobtns button").forEach((b) => {
+    b.addEventListener("click", () => { sel.algo = b.dataset.algo; refresh(); });
+  });
+
+  function syncGeomButtons() {
+    const v = sel.geom;
+    document.querySelectorAll("#geombtns button").forEach((b) => {
+      b.classList.toggle("active", b.dataset.geom === v);
+    });
+  }
+  document.querySelectorAll("#geombtns button").forEach((b) => {
+    b.addEventListener("click", () => { sel.geom = b.dataset.geom; refresh(); });
+  });
+
+  function refresh() {
+    syncAlgoButtons();
+    syncGeomButtons();
+    const p = collect();
+    let res;
+    try { res = generateMaze(p); }
+    catch (e) { $("pageinfo").textContent = "Error: " + e.message; return; }
+    const svg = $("preview");
+    svg.setAttribute("viewBox", "0 0 " + p.width + " " + p.height);
+    svg.innerHTML = dlToSvgBody(p, res.dl);
+    const w = parseFloat($("width").value), h = parseFloat($("height").value);
+    const u = $("page_units").value;
+    $("pageinfo").textContent = res.build.n + " cells · " +
+      (u === "inch" ? w + '" × ' + h + '"' : w + " × " + h + " cm");
+    document.querySelectorAll("#sizebtns button[data-w]").forEach((b) => {
+      b.classList.toggle("active",
+        parseFloat(b.dataset.w) === w && parseFloat(b.dataset.h) === h && b.dataset.u === u);
+    });
+    const cellNow = correct(sel.cell, 3, 60);
+    document.querySelectorAll("#mazesizebtns button").forEach((b) => {
+      b.classList.toggle("active", parseFloat(b.dataset.cell) === cellNow);
+    });
+    document.querySelectorAll("#lookbtns button").forEach((b) => {
+      b.classList.toggle("active", b.dataset.look === sel.look);
+    });
+    $("rotate").disabled = (w === h);
+    savePrefs();
+  }
+
+  function triggerDownload(blob, name) {
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url; a.download = name;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 10000);
+  }
+  function fileBase() {
+    const p = collect();
+    return "maze-" + p.geom + "-" + p.algo + "-" + p.seed;
+  }
+  function makePdfBlob() {
+    const p = collect();
+    const res = generateMaze(p);
+    return new Blob([buildPdf(p, res.dl, "Maze")], { type: "application/pdf" });
+  }
+  function makeSvgString() {
+    const p = collect();
+    const res = generateMaze(p);
+    return '<svg xmlns="http://www.w3.org/2000/svg" width="' + fnum(p.width) +
+      'pt" height="' + fnum(p.height) + 'pt" viewBox="0 0 ' + fnum(p.width) +
+      " " + fnum(p.height) + '">' + dlToSvgBody(p, res.dl) + "</svg>";
+  }
+
+  $("download").addEventListener("click", () => triggerDownload(makePdfBlob(), fileBase() + ".pdf"));
+  $("openprint").addEventListener("click", (ev) => {
+    ev.preventDefault();
+    const url = URL.createObjectURL(makePdfBlob());
+    window.open(url, "_blank");
+    setTimeout(() => URL.revokeObjectURL(url), 60000);
+  });
+  $("dl-svg").addEventListener("click", (ev) => {
+    ev.preventDefault();
+    triggerDownload(new Blob([makeSvgString()], { type: "image/svg+xml" }), fileBase() + ".svg");
+  });
+  $("dl-png").addEventListener("click", (ev) => {
+    ev.preventDefault();
+    const p = collect();
+    const img = new Image();
+    const url = URL.createObjectURL(new Blob([makeSvgString()], { type: "image/svg+xml" }));
+    img.onload = function () {
+      const scale = Math.min(300 / 72, 8000 / Math.max(p.width, p.height));
+      const c = document.createElement("canvas");
+      c.width = Math.round(p.width * scale);
+      c.height = Math.round(p.height * scale);
+      const ctx = c.getContext("2d");
+      ctx.fillStyle = "#" + p.bgColor;
+      ctx.fillRect(0, 0, c.width, c.height);
+      ctx.drawImage(img, 0, 0, c.width, c.height);
+      URL.revokeObjectURL(url);
+      c.toBlob((b) => { if (b) triggerDownload(b, fileBase() + ".png"); }, "image/png");
+    };
+    img.onerror = function () {
+      URL.revokeObjectURL(url);
+      alert("PNG export failed in this browser. The SVG download will work.");
+    };
+    img.src = url;
+  });
+
+  if (location.protocol !== "https:") $("copylink").style.display = "none";
+  $("copylink").addEventListener("click", function () {
+    const q = new URLSearchParams({
+      geom: sel.geom, algo: sel.algo, look: sel.look,
+      cell: sel.cell, seed: sel.seed,
+      sol: $("solution").checked ? "1" : "0",
+      w: $("width").value, h: $("height").value, u: $("page_units").value,
+      ink: $("inkhex").value, bg: $("bghex").value, solc: $("solhex").value
+    });
+    const url = location.href.split("#")[0] + "#" + q.toString();
+    const btn = this;
+    const done = () => { btn.textContent = "Copied!"; setTimeout(() => { btn.textContent = "Copy Link"; }, 1500); };
+    if (navigator.clipboard && navigator.clipboard.writeText)
+      navigator.clipboard.writeText(url).then(done, () => prompt("Copy this link:", url));
+    else prompt("Copy this link:", url);
+  });
+
+  function applyHash() {
+    if (!location.hash || location.hash.length < 2) return;
+    const q = new URLSearchParams(location.hash.slice(1));
+    for (const k of ["geom", "algo", "look", "cell", "seed"])
+      if (q.get(k) !== null) sel[k] = q.get(k);
+    const set = (k, id) => { if (q.get(k) !== null) $(id).value = q.get(k); };
+    set("w", "width"); set("h", "height"); set("u", "page_units");
+    if (q.get("sol")) $("solution").checked = q.get("sol") === "1";
+    if (q.get("ink")) { const c = checkColor(q.get("ink"), "000000"); $("inkhex").value = c; $("inkswatch").value = "#" + c; }
+    if (q.get("bg")) { const c = checkColor(q.get("bg"), "ffffff"); $("bghex").value = c; $("bgswatch").value = "#" + c; }
+    if (q.get("solc")) { const c = checkColor(q.get("solc"), "d33682"); $("solhex").value = c; $("solswatch").value = "#" + c; }
+  }
+  window.addEventListener("hashchange", () => { applyHash(); refresh(); });
+
+  // wiring
+  ["solution", "width", "height", "page_units"].forEach((id) => {
+    $(id).addEventListener("change", refresh);
+    $(id).addEventListener("input", refresh);
+  });
+  $("dice").addEventListener("click", () => {
+    sel.seed = Math.floor(Math.random() * 1000000000);
+    refresh();
+  });
+  // Scramble the fun settings (shape, process, look, cell size, seed);
+  // page size and colors are deliberate choices, so they stay put.
+  $("surprise").addEventListener("click", () => {
+    const pick = (arr) => arr[Math.floor(Math.random() * arr.length)];
+    sel.geom = pick(["square", "hex", "tri", "theta"]);
+    sel.algo = pick(["prim", "kruskal", "wilson", "backtracker"]);
+    sel.look = pick(["thin", "hand", "shadow", "thick", "round", "raised", "iso3d"]);
+    sel.cell = pick([20, 12, 7, 5]);
+    sel.seed = Math.floor(Math.random() * 1000000000);
+    refresh();
+  });
+  document.querySelectorAll("[data-cell]").forEach((b) => {
+    b.addEventListener("click", () => { sel.cell = b.dataset.cell; refresh(); });
+  });
+  document.querySelectorAll("#lookbtns button").forEach((b) => {
+    b.addEventListener("click", () => { sel.look = b.dataset.look; refresh(); });
+  });
+  $("inkswatch").addEventListener("input", function () { $("inkhex").value = this.value.replace(/^#/, ""); refresh(); });
+  $("bgswatch").addEventListener("input", function () { $("bghex").value = this.value.replace(/^#/, ""); refresh(); });
+  $("solswatch").addEventListener("input", function () { $("solhex").value = this.value.replace(/^#/, ""); refresh(); });
+  $("inkhex").addEventListener("change", function () { const c = checkColor(this.value.replace(/^#/, ""), "000000"); this.value = c; $("inkswatch").value = "#" + c; refresh(); });
+  $("bghex").addEventListener("change", function () { const c = checkColor(this.value.replace(/^#/, ""), "ffffff"); this.value = c; $("bgswatch").value = "#" + c; refresh(); });
+  $("solhex").addEventListener("change", function () { const c = checkColor(this.value.replace(/^#/, ""), "d33682"); this.value = c; $("solswatch").value = "#" + c; refresh(); });
+  document.querySelectorAll("#sizebtns button[data-w]").forEach((b) => {
+    b.addEventListener("click", () => {
+      $("width").value = b.dataset.w; $("height").value = b.dataset.h;
+      $("page_units").value = b.dataset.u; refresh();
+    });
+  });
+  $("rotate").addEventListener("click", () => {
+    const w = $("width").value; $("width").value = $("height").value; $("height").value = w; refresh();
+  });
+  $("keepapp").addEventListener("click", () => {
+    if (location.protocol === "file:") {
+      alert("Good news: you're already running your own copy.\nThis file works offline, forever.");
+      return;
+    }
+    fetch(location.href).then((r) => r.blob())
+      .then((b) => triggerDownload(b, "incompetech-maze.html"))
+      .catch(() => alert("Use your browser's File → Save Page As… to keep a copy."));
+  });
+
+  function savePrefs() {
+    try {
+      localStorage.setItem(PREFS_KEY, JSON.stringify({
+        geom: sel.geom, algo: sel.algo, look: sel.look,
+        cell: sel.cell, w: $("width").value, h: $("height").value, u: $("page_units").value,
+        sol: $("solution").checked ? "1" : "0"
+      }));
+    } catch (e) {}
+  }
+  function loadPrefs() {
+    let prefs = null;
+    try { prefs = JSON.parse(localStorage.getItem(PREFS_KEY)); } catch (e) {}
+    if (!prefs) return;
+    if (prefs.geom) sel.geom = prefs.geom;
+    if (prefs.algo) sel.algo = prefs.algo;
+    if (prefs.look) sel.look = prefs.look;
+    if (prefs.cell) sel.cell = prefs.cell;
+    if (prefs.w) $("width").value = prefs.w;
+    if (prefs.h) $("height").value = prefs.h;
+    if (prefs.u) $("page_units").value = prefs.u;
+    if (prefs.sol !== undefined) $("solution").checked = prefs.sol === "1";
+  }
+
+  loadPrefs();
+  sel.seed = Math.floor(Math.random() * 1000000000); // fresh maze each load
+  applyHash();  // a shared link's seed still wins
+  refresh();
+})();
+</script>
+</body>
+</html>
